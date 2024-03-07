@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, sprite::{Material2d, MaterialMesh2dBundle}};
 
 #[derive(Component)]
 enum TileType {
@@ -28,9 +28,11 @@ struct TileBundle {
 }
 
 #[derive(Bundle)]
-struct TilemapBundle {
+struct TilemapBundle<M: Material2d> {
 	tiles: TileStorage,
 	size: TilemapSize,
+	mesh: MaterialMesh2dBundle<M>
+	// TODO: Make a function to load a tilemap from a bmp or png file
 }
 
 pub struct TilemapPlugin;
