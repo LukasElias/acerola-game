@@ -5,6 +5,7 @@ use bevy::{
 use character::CharacterPlugin;
 
 mod character;
+mod tilemap;
 
 fn setup(mut commands: Commands) {
     // create the camera

@@ -8,6 +8,7 @@ struct Character {
     velocity: Velocity,
     sprite: SpriteBundle,
 }
+
 pub struct CharacterPlugin;
 
 impl Plugin for CharacterPlugin {
@@ -38,7 +39,6 @@ fn update_position(mut query: Query<(&Velocity, &mut Transform)>) {
     for mut character in query.iter_mut() {
         character.1.translation.x += character.0.0.x;
         character.1.translation.y += character.0.0.y;
-        println!("Velocity: {}, {}", character.0.0.x, character.0.0.y);
     }
 }
 
