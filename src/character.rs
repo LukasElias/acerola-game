@@ -42,7 +42,7 @@ fn update_position(mut query: Query<(&Velocity, &mut Transform)>) {
     }
 }
 
-pub fn spawn_character(mut commands: Commands) {
+pub fn spawn_character(mut commands: &mut Commands) {
 	commands.spawn(
         Character {
             velocity: Velocity(Vec2::new(0.0, 0.0)),

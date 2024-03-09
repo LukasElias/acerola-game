@@ -1,4 +1,6 @@
-use bevy::{prelude::*, sprite::{Material2d, MaterialMesh2dBundle}};
+use bevy::{
+	prelude::*, render::render_resource::ShaderType, sprite::{Material2d, MaterialMesh2dBundle}
+};
 
 #[derive(Component)]
 enum TileType {
@@ -7,32 +9,52 @@ enum TileType {
 }
 
 #[derive(Component)]
-struct TileIndex(i32);
+struct TileIndex(u32);
 
 #[derive(Component)]
-struct TileStorage {
-	tiles: Vec<Entity>,
+pub struct TileStorage {
+	pub tiles: Vec<Entity>,
 }
 
-#[derive(Component)]
-struct TilemapSize(IVec2);
+impl TileStorage {
+	pub fn from_vec_u32(commands: &mut Commands, storage: &Vec<u32>) -> Vec<Entity> {
+		let mut tiles = vec![];
 
-#[derive(Component)]
-struct TileParent(Entity);
+		for (index, tiletype) in storage.iter().enumerate() {
+			tiles.push(
+				commands.spawn(
+					TileBundle {
+						tiletype: match tiletype {
+							0 => TileType::Air,
+							_ => TileType::Ground,
+						},
+						index: TileIndex(index as u32),
+					}
+				).id()
+			);
+		}
+
+		tiles
+	}
+}
+
+#[derive(Component, ShaderType, Clone, Copy)]
+pub struct TilemapSize {
+	pub size: Vec2,
+}
 
 #[derive(Bundle)]
 struct TileBundle {
 	tiletype: TileType,
 	index: TileIndex,
-	tilemap: TileParent,
 }
 
 #[derive(Bundle)]
-struct TilemapBundle<M: Material2d> {
-	tiles: TileStorage,
-	size: TilemapSize,
-	mesh: MaterialMesh2dBundle<M>
-	// TODO: Make a function to load a tilemap from a bmp or png file
+pub struct TilemapBundle<M: Material2d> {
+	pub tiles: TileStorage,
+	pub size: TilemapSize,
+	pub material_mesh: MaterialMesh2dBundle<M>,
+	// TODO: Make a function to load a tilemap from a ron file
 }
 
 pub struct TilemapPlugin;
