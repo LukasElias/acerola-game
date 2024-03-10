@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 bevy = { version = "0.13.0", features = ["dynamic_linking"] }
+bevy_common_assets = { version = "0.10.0", features = ["ron"] }
+serde = { version = "1", features = ["derive"] }
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]
