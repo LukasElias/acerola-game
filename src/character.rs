@@ -1,6 +1,12 @@
-use bevy::{
-    prelude::*,
-    sprite::Anchor,
+use {
+    std::ops::Deref,
+    crate::{
+        Level, LevelHandle
+    },
+    bevy::{
+        prelude::*,
+        sprite::Anchor,
+    },
 };
 
 #[derive(Component)]
@@ -17,31 +23,107 @@ pub struct CharacterPlugin;
 impl Plugin for CharacterPlugin {
 	fn build(&self, app: &mut App) {
 		app.add_systems(
-            Update, ((jump, gravity), update_position).chain()
+            Update, ((jump, gravity, move_right, move_left), update_position).chain()
         );
 	}
 }
 
-fn jump(keyboard_input: Res<ButtonInput<KeyCode>>, mut query: Query<(&mut Velocity, &Transform)>) {
-    if keyboard_input.just_pressed(KeyCode::Space) {
-        let mut character = query.single_mut();
-        character.0.0.y += 30.0;
-    }
-}
-
-fn gravity(mut query: Query<(&mut Velocity, &Transform)>) {
+fn move_right(
+    mut query: Query<(&mut Velocity, &mut Transform)>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    levels: Res<Assets<Level>>,
+    level: Res<LevelHandle>,
+) {
     let mut character = query.single_mut();
-    if character.1.translation.y > 0.0 {
-        character.0.0.y = character.0.0.y - 3.0;
-    } else {
-        character.0.0.y = 0.0;
+    if let Some(level) = levels.get(level.0.id()) {
+        if !level.is_colliding_right(character.1.deref()) {
+            if keyboard_input.pressed(KeyCode::KeyD) || keyboard_input.pressed(KeyCode::ArrowRight) {
+                character.0.0.x = 10.0;
+            }
+        } else {
+            character.0.0.x = 0.0;
+            character.1.translation.x -= 1.0;
+        }
     }
 }
 
-fn update_position(mut query: Query<(&Velocity, &mut Transform)>) {
+fn move_left(
+    mut query: Query<(&mut Velocity, &mut Transform)>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    levels: Res<Assets<Level>>,
+    level: Res<LevelHandle>,
+) {
+    let mut character = query.single_mut();
+    if let Some(level) = levels.get(level.0.id()) {
+        if !level.is_colliding_left(character.1.deref()) {
+            if keyboard_input.pressed(KeyCode::KeyA) || keyboard_input.pressed(KeyCode::ArrowLeft) {
+                character.0.0.x = -10.0;
+            }
+        } else {
+            character.0.0.x = 0.0;
+            character.1.translation.x += 1.0;
+        }
+    }
+}
+
+fn jump(
+    mut query: Query<(&mut Velocity, &Transform)>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    levels: Res<Assets<Level>>,
+    level: Res<LevelHandle>,
+) {
+    let mut character = query.single_mut();
+    if let Some(level) = levels.get(level.0.id()) {
+        if (
+            keyboard_input.just_pressed(KeyCode::Space) ||
+            keyboard_input.just_pressed(KeyCode::KeyW) ||
+            keyboard_input.just_pressed(KeyCode::ArrowUp)
+        ) && level.is_colliding_bottom(character.1) {
+            character.0.0.y += 15.0;
+        }
+    }
+}
+
+fn gravity(
+    mut query: Query<(&mut Velocity, &mut Transform)>,
+    levels: Res<Assets<Level>>,
+    level: Res<LevelHandle>,
+) {
+    let mut character = query.single_mut();
+    if let Some(level) = levels.get(level.0.id()) {
+        if level.is_colliding_bottom(character.1.deref()) {
+            character.0.0.y = 0.0;
+        } else {
+            character.0.0.y -= 1.0;
+        }
+    }
+}
+
+fn update_position(
+    mut query: Query<(&mut Velocity, &mut Transform)>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    levels: Res<Assets<Level>>,
+    level: Res<LevelHandle>,
+) {
     let mut character = query.single_mut();
     character.1.translation.x += character.0.0.x;
     character.1.translation.y += character.0.0.y;
+
+    if let Some(level) = levels.get(level.0.id()) {
+        if character.0.0.y > 0.0 {
+            if level.is_colliding_top(character.1.deref()) {
+                character.0.0.y = 0.0;
+            }
+        }
+    }
+
+    if keyboard_input.just_released(KeyCode::KeyA) ||
+        keyboard_input.just_released(KeyCode::ArrowLeft) ||
+        keyboard_input.just_released(KeyCode::KeyD) ||
+        keyboard_input.just_released(KeyCode::ArrowRight)
+    {
+        character.0.0.x = 0.0;
+    }
 }
 
 pub fn spawn_character(commands: &mut Commands) {

@@ -1,7 +1,8 @@
 use {
+	serde::Deserialize,
 	crate::{
 		AppState,
-		character::Velocity,
+		Velocity,
 	},
 	bevy::{
 		prelude::*,
@@ -13,10 +14,10 @@ use {
 			MaterialMesh2dBundle,
             Mesh2dHandle,
 		},
-	}, serde::Deserialize
+	},
 };
 
-#[derive(Component, Deserialize, Clone, Copy)]
+#[derive(Component, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 enum TileType {
 	Air,
 	Ground,
@@ -85,7 +86,94 @@ impl Level {
 		let size = self.size.size;
 		let mid_tile = size / Vec2::splat(2.0);
 
-		(self.start_tile.as_vec2() - mid_tile) * Vec2::splat(16.0)
+		(self.start_tile.as_vec2() - mid_tile) * Vec2::new(16.0, -16.0)
+	}
+
+	pub fn screen_pos_to_tile_pos(&self, screen_pos: Vec2) -> Vec2 {
+		let size = self.size.size;
+		let mid_tile = size / Vec2::splat(2.0);
+
+		screen_pos / Vec2::new(16.0, -16.0) + mid_tile
+	}
+
+	pub fn is_colliding_bottom(&self, query: &Transform) -> bool {
+        let tile_pos = self.screen_pos_to_tile_pos(query.translation.xy()).as_uvec2();
+
+		let tile_index = (tile_pos.y + 2) as usize * self.size.size.x as usize + tile_pos.x as usize;
+
+		let tiletype_0 = self.tile_storage.tiles.get(tile_index);
+		let tiletype_1 = self.tile_storage.tiles.get(tile_index + 1);
+		let mut result: bool = false;
+
+		if tiletype_0.is_some() {
+			result = *tiletype_0.unwrap() != TileType::Air;
+		}
+
+		if tiletype_1.is_some() {
+			result = result || *tiletype_1.unwrap() != TileType::Air;
+		}
+
+		result
+	}
+
+	pub fn is_colliding_top(&self, query: &Transform) -> bool {
+		let tile_pos = self.screen_pos_to_tile_pos(query.translation.xy()).as_uvec2();
+
+		let tile_index = (tile_pos.y - 1) as usize * self.size.size.x as usize + tile_pos.x as usize;
+
+		let tiletype_0 = self.tile_storage.tiles.get(tile_index);
+		let tiletype_1 = self.tile_storage.tiles.get(tile_index + 1);
+		let mut result: bool = false;
+
+		if tiletype_0.is_some() {
+			result = *tiletype_0.unwrap() != TileType::Air;
+		}
+
+		if tiletype_1.is_some() {
+			result = result || *tiletype_1.unwrap() != TileType::Air;
+		}
+
+		result
+	}
+
+	pub fn is_colliding_right(&self, query: &Transform) -> bool {
+		let tile_pos = self.screen_pos_to_tile_pos(query.translation.xy()).as_uvec2();
+		
+		let tile_index = tile_pos.y as usize * self.size.size.x as usize + tile_pos.x as usize + 2;
+
+		let tiletype_0 = self.tile_storage.tiles.get(tile_index);
+		let tiletype_1 = self.tile_storage.tiles.get(tile_index + self.size.size.x as usize);
+		let mut result: bool = false;
+
+		if tiletype_0.is_some() {
+			result = *tiletype_0.unwrap() != TileType::Air;
+		}
+
+		if tiletype_1.is_some() {
+			result = result || *tiletype_1.unwrap() != TileType::Air;
+		}
+
+		result
+	}
+	
+	pub fn is_colliding_left(&self, query: &Transform) -> bool {
+		let tile_pos = self.screen_pos_to_tile_pos(query.translation.xy()).as_uvec2();
+
+		let tile_index = tile_pos.y as usize * self.size.size.x as usize + tile_pos.x as usize;
+
+		let tiletype_0 = self.tile_storage.tiles.get(tile_index);
+		let tiletype_1 = self.tile_storage.tiles.get(tile_index + self.size.size.x as usize);
+		let mut result: bool = false;
+
+		if tiletype_0.is_some() {
+			result = *tiletype_0.unwrap() != TileType::Air;
+		}
+		
+		if tiletype_1.is_some() {
+			result = result || *tiletype_1.unwrap() != TileType::Air;
+		}
+
+		result
 	}
 }
 
@@ -109,13 +197,13 @@ pub fn spawn_level(
 	mut commands: Commands,
 	mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<TilemapMaterial>>,
-    mut levels: ResMut<Assets<Level>>,
 	mut state: ResMut<NextState<AppState>>,
 	mut query: Query<&mut Transform, With<Velocity>>,
 	tile_texture: Res<ImageHandle>,
+    levels: ResMut<Assets<Level>>,
 	level: Res<LevelHandle>,
 ) {
-	if let Some(level) = levels.remove(level.0.id()) {
+	if let Some(level) = levels.get(level.0.id()) {
 		let tilemap_material: TilemapMaterial = TilemapMaterial {
 			tilemap_size: level.size,
 			tile_storage: level.tile_storage.to_vec_u32(),
@@ -137,7 +225,7 @@ pub fn spawn_level(
 		let mut character = query.single_mut();
 		let tile_screen_pos = level.get_start_tile_screen_pos();
 
-		character.translation = Vec3::new(tile_screen_pos.x, -tile_screen_pos.y, 1.0);
+		character.translation = Vec3::new(tile_screen_pos.x, tile_screen_pos.y, 1.0);
 
 		state.set(AppState::Level);
 	}
