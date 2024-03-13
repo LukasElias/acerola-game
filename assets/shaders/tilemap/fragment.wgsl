@@ -20,6 +20,6 @@ fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
 	return textureSample(
 		tile_texture,
 		tile_texture_sampler,
-		vec2<f32>(texture_offset, 0.0) + (tile_pos - floor(tile_pos)) * f32(texture_dimensions.y) / f32(texture_dimensions.x)
+		vec2<f32>(texture_offset, 0.0) + fract(tile_pos) * vec2<f32>(f32(texture_dimensions.y) / f32(texture_dimensions.x), 1.0)
 	);
 }

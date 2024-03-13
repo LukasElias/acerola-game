@@ -18,23 +18,39 @@ use {
 };
 
 #[derive(Component, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-enum TileType {
+pub enum TileType {
 	Air,
-	Ground,
+	Grass,
+	GrassL,
+	GrassR,
+	Wall,
+	Key,
 }
 
 impl TileType {
 	fn to_u32(&self) -> u32 {
 		match self {
-			TileType::Air => 0,
-			TileType::Ground => 1,
+			Self::Air => 0,
+			Self::Grass => 1,
+			Self::GrassL => 2,
+			Self::GrassR => 3,
+			Self::Wall => 4,
+			Self::Key => 5,
+		}
+	}
+
+	pub fn is_wall(&self) -> bool {
+		match self {
+			Self::Air => false,
+			Self::Key => false,
+			_ => true,
 		}
 	}
 }
 
 #[derive(Component, Deserialize, Clone)]
 pub struct TileStorage {
-	tiles: Vec<TileType>,
+	pub tiles: Vec<TileType>,
 }
 
 impl TileStorage {
@@ -77,7 +93,8 @@ impl Material2d for TilemapMaterial {
 #[derive(Asset, TypePath, Deserialize, Clone)]
 pub struct Level {
 	pub size: TilemapSize,
-	tile_storage: TileStorage,
+	pub tile_storage: TileStorage,
+	pub tilemap_entity: Option<Entity>,
 	start_tile: UVec2,
 }
 
@@ -106,11 +123,11 @@ impl Level {
 		let mut result: bool = false;
 
 		if tiletype_0.is_some() {
-			result = *tiletype_0.unwrap() != TileType::Air;
+			result = tiletype_0.unwrap().is_wall();
 		}
 
 		if tiletype_1.is_some() {
-			result = result || *tiletype_1.unwrap() != TileType::Air;
+			result = result || tiletype_1.unwrap().is_wall();
 		}
 
 		result
@@ -126,11 +143,11 @@ impl Level {
 		let mut result: bool = false;
 
 		if tiletype_0.is_some() {
-			result = *tiletype_0.unwrap() != TileType::Air;
+			result = tiletype_0.unwrap().is_wall();
 		}
 
 		if tiletype_1.is_some() {
-			result = result || *tiletype_1.unwrap() != TileType::Air;
+			result = result || tiletype_1.unwrap().is_wall();
 		}
 
 		result
@@ -146,11 +163,11 @@ impl Level {
 		let mut result: bool = false;
 
 		if tiletype_0.is_some() {
-			result = *tiletype_0.unwrap() != TileType::Air;
+			result = tiletype_0.unwrap().is_wall();
 		}
 
 		if tiletype_1.is_some() {
-			result = result || *tiletype_1.unwrap() != TileType::Air;
+			result = result || tiletype_1.unwrap().is_wall();
 		}
 
 		result
@@ -166,11 +183,11 @@ impl Level {
 		let mut result: bool = false;
 
 		if tiletype_0.is_some() {
-			result = *tiletype_0.unwrap() != TileType::Air;
+			result = tiletype_0.unwrap().is_wall();
 		}
 		
 		if tiletype_1.is_some() {
-			result = result || *tiletype_1.unwrap() != TileType::Air;
+			result = result || tiletype_1.unwrap().is_wall();
 		}
 
 		result
@@ -199,18 +216,18 @@ pub fn spawn_level(
     mut materials: ResMut<Assets<TilemapMaterial>>,
 	mut state: ResMut<NextState<AppState>>,
 	mut query: Query<&mut Transform, With<Velocity>>,
+    mut levels: ResMut<Assets<Level>>,
 	tile_texture: Res<ImageHandle>,
-    levels: ResMut<Assets<Level>>,
 	level: Res<LevelHandle>,
 ) {
-	if let Some(level) = levels.get(level.0.id()) {
+	if let Some(level) = levels.get_mut(level.0.id()) {
 		let tilemap_material: TilemapMaterial = TilemapMaterial {
 			tilemap_size: level.size,
 			tile_storage: level.tile_storage.to_vec_u32(),
 			tile_texture: Some(tile_texture.0.to_owned()),
 		};
 
-		commands.spawn(
+		let tilemap_entity = commands.spawn(
 			TilemapBundle {
 				tile_storage: level.tile_storage.to_owned(),
 				size: level.size,
@@ -220,7 +237,9 @@ pub fn spawn_level(
 					..default()
 				},
 			}
-		);
+		).id();
+
+		level.tilemap_entity = Some(tilemap_entity);
 
 		let mut character = query.single_mut();
 		let tile_screen_pos = level.get_start_tile_screen_pos();

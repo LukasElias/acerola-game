@@ -22,6 +22,7 @@ enum AppState {
     #[default]
     Loading,
     Level,
+    Won,
     Dead,
 }
 
@@ -35,7 +36,7 @@ fn setup(
     );
 
     let font = asset_server.load("fonts/game_over.ttf");
-    let text_style = TextStyle {
+    let text_style_game_over = TextStyle {
         font: font.clone(),
         font_size: 60.0,
         color: Color::ORANGE_RED,
@@ -48,7 +49,26 @@ fn setup(
                 translation: Vec3::new(0.0, 0.0, 100.0),
                 ..default()
             },
-            text: Text::from_section("Fall damage is a thing!\nAnd you are dead", text_style.clone())
+            text: Text::from_section("Fall damage is a thing!\nAnd you are dead!", text_style_game_over.clone())
+                .with_justify(JustifyText::Center),
+            ..default()
+        },
+    ));
+
+    let text_style_won = TextStyle {
+        font: font.clone(),
+        font_size: 80.0,
+        color: Color::YELLOW,
+    };
+
+    commands.spawn((
+        Text2dBundle {
+            visibility: Visibility::Hidden,
+            transform: Transform {
+                translation: Vec3::new(0.0, 0.0, 100.0),
+                ..default()
+            },
+            text: Text::from_section("You Won!", text_style_won.clone())
                 .with_justify(JustifyText::Center),
             ..default()
         },
@@ -70,6 +90,7 @@ fn main() {
         .add_plugins((
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
+                    title: "Not as expected".to_string(),
                     present_mode: PresentMode::AutoVsync,
                     prevent_default_event_handling: false,
                     window_theme: Some(WindowTheme::Dark),
@@ -82,7 +103,7 @@ fn main() {
                 ..default()
             }),
             Material2dPlugin::<TilemapMaterial>::default(),
-            RonAssetPlugin::<Level>::new(&["level.ron"]),
+            RonAssetPlugin::<Level>::new(&[".level.ron"]),
             CharacterPlugin,
             LevelPlugin,
         ))

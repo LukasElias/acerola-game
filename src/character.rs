@@ -1,14 +1,13 @@
 use {
-    std::ops::Deref,
     crate::{
+        AppState,
         Level,
         LevelHandle,
-        AppState,
-    },
-    bevy::{
+        TileType,
+    }, bevy::{
         prelude::*,
         sprite::Anchor,
-    },
+    }, std::ops::Deref
 };
 
 #[derive(Component)]
@@ -29,17 +28,73 @@ pub struct CharacterPlugin;
 impl Plugin for CharacterPlugin {
 	fn build(&self, app: &mut App) {
 		app.add_systems(
-            Update, (((jump, gravity, move_right, move_left).run_if(in_state(AppState::Level)), update_position).chain(), fall_damage_screen.run_if(in_state(AppState::Dead)))
+            Update,
+            (
+                (
+                    (jump, gravity, move_right, move_left).run_if(in_state(AppState::Level)),
+                    update_position
+                ).chain(),
+                fall_damage_screen.run_if(in_state(AppState::Dead)),
+                winning_screen.run_if(in_state(AppState::Won)),
+                colliding_key.run_if(in_state(AppState::Level)),
+            )
         );
 	}
 }
 
-fn fall_damage_screen(
-    mut query: Query<&mut Visibility, With<Text>>,
+fn colliding_key(
+    mut state: ResMut<NextState<AppState>>,
+    mut levels: ResMut<Assets<Level>>,
+    level: Res<LevelHandle>,
+    query: Query<(&Velocity, &Transform)>,
 ) {
-    let mut fall_damage_text = query.single_mut();
+    let character = query.single();
+    if let Some(level) = levels.get_mut(level.0.id()) {
+        let tile_pos = level.screen_pos_to_tile_pos(character.1.translation.xy()).floor();
 
-    *fall_damage_text = Visibility::Visible;
+        let mut is_colliding: bool = false;
+        
+        let tile_0 = level.tile_storage.tiles.get((tile_pos.y * level.size.size.x + tile_pos.x) as usize);
+        let tile_1 = level.tile_storage.tiles.get(((tile_pos.y + 1.0) * level.size.size.x + tile_pos.x) as usize);
+        let tile_2 = level.tile_storage.tiles.get(((tile_pos.y + 1.0) * level.size.size.x + tile_pos.x + 1.0) as usize);
+        let tile_3 = level.tile_storage.tiles.get((tile_pos.y * level.size.size.x + tile_pos.x + 1.0) as usize);
+
+        if tile_0.is_some() {
+            is_colliding = *tile_0.unwrap() == TileType::Key;
+        }
+
+        if tile_1.is_some() {
+            is_colliding = is_colliding || *tile_1.unwrap() == TileType::Key;
+        }
+
+        if tile_2.is_some() {
+            is_colliding = is_colliding || *tile_2.unwrap() == TileType::Key;
+        }
+
+        if tile_3.is_some() {
+            is_colliding = is_colliding || *tile_3.unwrap() == TileType::Key;
+        }
+
+        if is_colliding {
+            state.set(AppState::Won);
+        }
+    }
+}
+
+fn winning_screen(mut query: Query<(&mut Visibility, &Text)>) {
+    for mut text in query.iter_mut() {
+        if text.1.sections[0].value == String::from("You Won!") {
+            *text.0 = Visibility::Visible;
+        }
+    }
+}
+
+fn fall_damage_screen(mut query: Query<(&mut Visibility, &Text)>) {
+    for mut text in query.iter_mut() {
+        if text.1.sections[0].value == String::from("Fall damage is a thing!\nAnd you are dead!") {
+            *text.0 = Visibility::Visible;
+        }
+    }
 }
 
 fn move_right(
