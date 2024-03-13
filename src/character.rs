@@ -1,7 +1,9 @@
 use {
     std::ops::Deref,
     crate::{
-        Level, LevelHandle
+        Level,
+        LevelHandle,
+        AppState,
     },
     bevy::{
         prelude::*,
@@ -12,8 +14,12 @@ use {
 #[derive(Component)]
 pub struct Velocity(bevy::prelude::Vec2);
 
+#[derive(Component)]
+pub struct Fall(f32);
+
 #[derive(Bundle)]
 struct Character {
+    fall: Fall,
     velocity: Velocity,
     sprite: SpriteBundle,
 }
@@ -23,9 +29,17 @@ pub struct CharacterPlugin;
 impl Plugin for CharacterPlugin {
 	fn build(&self, app: &mut App) {
 		app.add_systems(
-            Update, ((jump, gravity, move_right, move_left), update_position).chain()
+            Update, (((jump, gravity, move_right, move_left).run_if(in_state(AppState::Level)), update_position).chain(), fall_damage_screen.run_if(in_state(AppState::Dead)))
         );
 	}
+}
+
+fn fall_damage_screen(
+    mut query: Query<&mut Visibility, With<Text>>,
+) {
+    let mut fall_damage_text = query.single_mut();
+
+    *fall_damage_text = Visibility::Visible;
 }
 
 fn move_right(
@@ -85,16 +99,27 @@ fn jump(
 }
 
 fn gravity(
-    mut query: Query<(&mut Velocity, &mut Transform)>,
+    mut query: Query<(&mut Velocity, &mut Transform, &mut Fall)>,
+    mut state: ResMut<NextState<AppState>>,
     levels: Res<Assets<Level>>,
     level: Res<LevelHandle>,
 ) {
     let mut character = query.single_mut();
     if let Some(level) = levels.get(level.0.id()) {
-        if level.is_colliding_bottom(character.1.deref()) {
+        if level.is_colliding_bottom(character.1.deref()) || level.screen_pos_to_tile_pos(character.1.translation.xy()).y > level.size.size.y {
             character.0.0.y = 0.0;
+            
+            if character.2.0 < -150.0 {
+                state.set(AppState::Dead);
+            }
+
+            character.2.0 = 0.0;
         } else {
             character.0.0.y -= 1.0;
+
+            if character.0.0.y < 0.0 {
+                character.2.0 += character.0.0.y;
+            }
         }
     }
 }
@@ -129,6 +154,7 @@ fn update_position(
 pub fn spawn_character(commands: &mut Commands) {
 	commands.spawn(
         Character {
+            fall: Fall(0.0),
             velocity: Velocity(Vec2::new(0.0, 0.0)),
             sprite: SpriteBundle {
                 sprite: Sprite {

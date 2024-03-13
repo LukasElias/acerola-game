@@ -22,6 +22,7 @@ enum AppState {
     #[default]
     Loading,
     Level,
+    Dead,
 }
 
 fn setup(
@@ -32,6 +33,26 @@ fn setup(
     commands.spawn(
         Camera2dBundle::default()
     );
+
+    let font = asset_server.load("fonts/game_over.ttf");
+    let text_style = TextStyle {
+        font: font.clone(),
+        font_size: 60.0,
+        color: Color::ORANGE_RED,
+    };
+
+    commands.spawn((
+        Text2dBundle {
+            visibility: Visibility::Hidden,
+            transform: Transform {
+                translation: Vec3::new(0.0, 0.0, 100.0),
+                ..default()
+            },
+            text: Text::from_section("Fall damage is a thing!\nAnd you are dead", text_style.clone())
+                .with_justify(JustifyText::Center),
+            ..default()
+        },
+    ));
 
     spawn_character(&mut commands);
 

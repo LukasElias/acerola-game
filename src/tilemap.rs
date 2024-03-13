@@ -76,8 +76,8 @@ impl Material2d for TilemapMaterial {
 
 #[derive(Asset, TypePath, Deserialize, Clone)]
 pub struct Level {
+	pub size: TilemapSize,
 	tile_storage: TileStorage,
-	size: TilemapSize,
 	start_tile: UVec2,
 }
 
